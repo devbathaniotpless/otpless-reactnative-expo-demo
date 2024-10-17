@@ -1,70 +1,252 @@
-import { Image, StyleSheet, Platform } from 'react-native';
-
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+import { HelloWave } from "@/components/HelloWave";
+import ParallaxScrollView from "@/components/ParallaxScrollView";
+import { ThemedText } from "@/components/ThemedText";
+import { ThemedView } from "@/components/ThemedView";
+import React, { useEffect, useState } from "react";
+import {
+  Button,
+  Text,
+  Image,
+  StyleSheet,
+  Platform,
+  View,
+  TextInput,
+  ScrollView,
+  TouchableOpacity,
+  Clipboard,
+  Keyboard,
+} from "react-native";
+import { OtplessHeadlessModule } from "otpless-react-native";
 
 export default function HomeScreen() {
+  const headlessModule = new OtplessHeadlessModule();
+  const [result, setResult] = useState("Result view");
+  const [form, setForm] = useState({
+    phoneNumber: "",
+    countryCode: "",
+    otp: "",
+    channelType: "",
+    email: "",
+    otpLength: "",
+    expiry: "",
+    deliveryChannel: "",
+  });
+
+  useEffect(() => {
+    headlessModule.initHeadless("ALP5OU9SMLB3NSPYGNSG");
+    headlessModule.setHeadlessCallback(onHeadlessResult);
+    return () => {
+      headlessModule.clearListener();
+    };
+  }, []);
+
+  const handleChange = (fieldName: string, value: string) => {
+    setForm((prevForm) => ({
+      ...prevForm,
+      [fieldName]: value,
+    }));
+  };
+
+  const startHeadless = () => {
+    let headlessRequest: any = {};
+    const {
+      phoneNumber,
+      countryCode,
+      otp,
+      channelType,
+      expiry,
+      otpLength,
+      deliveryChannel,
+    } = form;
+    if (phoneNumber) {
+      headlessRequest = {
+        phone: phoneNumber,
+        countryCode: countryCode,
+        otp: otp,
+        expiry: expiry,
+        otpLength: otpLength,
+        deliveryChannel: deliveryChannel,
+      };
+    } else {
+      headlessRequest = { channelType };
+    }
+    headlessModule.startHeadless(headlessRequest);
+  };
+
+  const onHeadlessResult = (data: any) => {
+    const dataStr = JSON.stringify(data);
+    setResult(dataStr);
+  };
+
+  const copyToClipboard = () => {
+    Clipboard.setString(result);
+    // alert("Result copied to clipboard!");
+  };
+
+  const showPhoneHintLib = async () => {
+    headlessModule.showPhoneHint(false, (response: any) => {
+      console.log("Phone hint result:", response);
+      if (response.phoneNumber) {
+        const phoneNumber = response.phoneNumber;
+        const countryCode = phoneNumber.substring(0, 3);
+        const numberWithoutCountryCode = phoneNumber.substring(3);
+
+        setForm((prevForm) => ({
+          ...prevForm,
+          phoneNumber: numberWithoutCountryCode.trim(),
+          countryCode: countryCode.trim(),
+          result: "Result:",
+        }));
+      } else if (response.error) {
+        setResult(response.error);
+      }
+    });
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
+    <ScrollView>
+      <TextInput
+        style={[styles.input, { flex: 1 }]}
+        placeholder="Phone Number"
+        placeholderTextColor="#999"
+        value={form.phoneNumber}
+        onChangeText={(text) => handleChange("phoneNumber", text)}
+        keyboardType="phone-pad"
+      />
+      <View style={styles.row}>
+        <TextInput
+          style={[styles.input, { flex: 1 }]}
+          placeholder="Country Code"
+          placeholderTextColor="#999"
+          value={form.countryCode}
+          onChangeText={(text) => handleChange("countryCode", text)}
+          keyboardType="phone-pad"
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({ ios: 'cmd + d', android: 'cmd + m' })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+
+        <TextInput
+          style={[styles.input, { flex: 1 }]}
+          placeholder="OTP Length"
+          placeholderTextColor="#999"
+          value={form.otpLength}
+          onChangeText={(text) => handleChange("otpLength", text)}
+          keyboardType="numeric"
+        />
+        <TextInput
+          style={[styles.input, { flex: 1 }]}
+          placeholder="Expiry"
+          placeholderTextColor="#999"
+          value={form.expiry}
+          onChangeText={(text) => handleChange("expiry", text)}
+          keyboardType="numeric"
+        />
+      </View>
+
+      <TextInput
+        style={styles.input}
+        placeholder="Enter email"
+        placeholderTextColor="#999"
+        value={form.email}
+        onChangeText={(text) => handleChange("email", text)}
+      />
+
+      <TextInput
+        style={styles.input}
+        placeholder="Enter OTP"
+        placeholderTextColor="#999"
+        value={form.otp}
+        onChangeText={(text) => handleChange("otp", text)}
+        keyboardType="phone-pad"
+      />
+
+      <View style={styles.row}>
+        <TextInput
+          style={[styles.input, { flex: 1 }]}
+          placeholder="Enter SSO Channel"
+          placeholderTextColor="#999"
+          value={form.channelType}
+          onChangeText={(text) =>
+            handleChange("channelType", text.toUpperCase())
+          }
+        />
+        <TextInput
+          style={[styles.input, { flex: 1 }]}
+          placeholder="Delivery Channel"
+          placeholderTextColor="#999"
+          value={form.deliveryChannel}
+          onChangeText={(text) =>
+            handleChange("deliveryChannel", text.toUpperCase())
+          }
+        />
+      </View>
+
+      <TouchableOpacity style={styles.primaryButton} onPress={startHeadless}>
+        <Text style={styles.buttonText}>Start Headless</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.primaryButton} onPress={showPhoneHintLib}>
+        <Text style={styles.buttonText}>Show phone hint lib</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.primaryButton} onPress={copyToClipboard}>
+        <Text style={styles.buttonText}>Copy Result</Text>
+      </TouchableOpacity>
+
+      <Text style={styles.resultText}>{result}</Text>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  header: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 30,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  input: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    color: "#000000",
+    borderRadius: 8,
+    padding: 10,
+    marginVertical: 10,
+    marginHorizontal: 10,
+    backgroundColor: "#fff",
+    fontSize: 16,
+  },
+  primaryButton: {
+    marginVertical: 10,
+    backgroundColor: "#007AFF",
+    padding: 10,
+    borderRadius: 30,
+    justifyContent: "center",
+    marginHorizontal: 10,
+    alignItems: "center",
+  },
+  buttonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  resultText: {
+    marginTop: 20,
+    fontSize: 16,
+    color: "#333",
+    backgroundColor: "#fff",
+    padding: 15,
+    borderRadius: 8,
+    width: "100%",
+    maxWidth: 400,
+    textAlign: "center",
+  },
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
   },
 });
